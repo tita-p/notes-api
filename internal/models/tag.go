@@ -11,10 +11,6 @@ type Tag struct {
 	Name string `json:"name" bson:"name"`
 }
 
-func init() {
-	collectionName = "tags"
-}
-
 func InsertTags(tags []Tag) {
 	items := sliceToInterface(tags, func(tag Tag) interface{} {
 		return bson.M{

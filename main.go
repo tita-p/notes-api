@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strconv"
 
-	mongoDb "firstGoPro/internal/database"
-	model "firstGoPro/internal/models"
+	mongoDb "github.com/tita-p/notes-api/internal/database"
+	model "github.com/tita-p/notes-api/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

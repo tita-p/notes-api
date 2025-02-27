@@ -2,9 +2,10 @@ package model
 
 import (
 	"context"
-	mongoDb "firstGoPro/internal/database"
 	"fmt"
 	"log"
+
+	mongoDb "github.com/tita-p/notes-api/internal/database"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -17,7 +18,6 @@ type filter struct {
 	operation string
 }
 
-var collectionName string
 var dbClient *mongo.Client
 var dbContext context.Context
 

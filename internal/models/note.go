@@ -6,10 +6,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func init() {
-	collectionName = "notes"
-}
-
 type Note struct {
 	Id      string `json:"id" bson:"_id"`
 	Title   string `json:"title" bson:"title"`

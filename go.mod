@@ -1,4 +1,4 @@
-module firstGoPro
+module github.com/tita-p/notes-api
 
 go 1.23.3
 
