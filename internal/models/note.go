@@ -1,31 +1,60 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Note struct {
-	Id      string `json:"id" bson:"_id"`
-	Title   string `json:"title" bson:"title"`
-	Content string `json:"content" bson:"content"`
-	Tag     Tag    `json:"tag" bson:"tag"`
+	Id      primitive.ObjectID `bson:"_id" json:"id,omitempty"`
+	Title   string             `json:"title" bson:"title"`
+	Content string             `json:"content" bson:"content"`
+	Tag     *Tag               `json:"tag" bson:"tag"`
 }
 
-func InsertNotes(notes []Note) {
+var noteCollectionName = "notes"
+
+func InsertNotes(notes []*Note) []Note {
+	fmt.Printf("...inserted tag...%+v\n", notes[0].Tag.Id.Hex())
 	items := sliceToInterface(notes, func(note Note) interface{} {
 		return bson.M{
 			"title":      note.Title,
 			"content":    note.Content,
+			"tag":        note.Tag,
 			"create_at":  time.Now(),
 			"updated_at": time.Now(),
 		}
 	})
 
-	InsertMany("notes", items)
+	return InsertMany[Note](noteCollectionName, items)
 }
 
-func GetNotes() []Note {
-	return Find[Note]("notes")
+func GetNotes(filters ...*filter) []Note {
+	return Find[Note](noteCollectionName, filters...)
+}
+
+func UpdateNote(note *Note) {
+	updateSet := bson.M{
+		"$set": bson.M{
+			"title":      note.Title,
+			"content":    note.Content,
+			"tag":        note.Tag,
+			"updated_at": time.Now(),
+		},
+	}
+
+	Update[Note](noteCollectionName, note.Id, updateSet)
+}
+
+func DeleteNote(id string) {
+	Delete(noteCollectionName, stringToObjectId(id))
+}
+
+func GetNoteById(id string) (Note, bool) {
+	objectID := stringToObjectId(id)
+
+	return FindById[Note](noteCollectionName, objectID)
 }

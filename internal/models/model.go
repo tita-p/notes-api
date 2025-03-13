@@ -8,47 +8,73 @@ import (
 	mongoDb "github.com/tita-p/notes-api/internal/database"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type filter struct {
-	key       string
-	value     string
-	operation string
+	key      string
+	value    interface{}
+	operator string
 }
 
 var dbClient *mongo.Client
 var dbContext context.Context
 
-func sliceToInterface[T any](slice []T, fn func(T) interface{}) []interface{} {
+func Filter(key string, operator string, value interface{}) *filter {
+	var mongoDbOperator string
+
+	switch operator {
+	case "in":
+		mongoDbOperator = "$in"
+	case "=":
+	default:
+		mongoDbOperator = "$eq"
+	}
+
+	return &filter{
+		key:      key,
+		value:    value,
+		operator: mongoDbOperator,
+	}
+}
+
+func sliceToInterface[T any](slice []*T, fn func(T) interface{}) []interface{} {
 	var result []interface{}
 	for _, v := range slice {
-		result = append(result, fn(v))
+		result = append(result, fn(*v))
 	}
 	return result
 }
 
 func init() {
-	tags := []Tag{
-		{Id: "1", Name: "Person 1"},
-		{Id: "2", Name: "Person 2"},
-	}
-
-	notes := []Note{
-		{Id: "1", Title: "Note #1", Content: "Content of the note #1", Tag: tags[0]},
-		{Id: "2", Title: "Note #2", Content: "Content of the note #2", Tag: tags[1]},
-	}
+	// tags := []*Tag{
+	// 	{Name: "Person 1"},
+	// 	{Name: "Person 2"},
+	// }
 
 	dbClient = mongoDb.DbClient()
 	dbContext = mongoDb.DbContext()
 
-	dbClient.Database("db").Drop(dbContext)
-	InsertNotes(notes)
-	InsertTags(tags)
+	// dbClient.Database("db").Collection("notes").Drop(dbContext)
+	// dbClient.Database("db").Collection("tags").Drop(dbContext)
+
+	// insertedTags := InsertTags(tags)
+
+	// fmt.Printf("...inserted tag 1...%+v\n", insertedTags[0].Id.Hex())
+
+	// firstTag := &insertedTags[0]
+
+	// notes := []*Note{
+	// 	{Title: "Note #1", Content: "Content of the note #1", Tag: firstTag},
+	// 	{Title: "Note #2", Content: "Content of the note #2", Tag: firstTag},
+	// }
+
+	// InsertNotes(notes)
 }
 
-func InsertMany(collectionName string, items []interface{}) {
+func InsertMany[T any](collectionName string, items []interface{}) []T {
 	database := dbClient.Database("db")
 	collection := database.Collection(collectionName)
 
@@ -56,15 +82,49 @@ func InsertMany(collectionName string, items []interface{}) {
 
 	if err != nil {
 		log.Fatalf("inserted many error : %v", err)
-		return
 	}
 
-	for _, doc := range insertedManyResult.InsertedIDs {
-		fmt.Println(doc)
+	var insertedItems []T
+
+	for _, id := range insertedManyResult.InsertedIDs {
+		if objectID, ok := id.(primitive.ObjectID); ok {
+			insertedData, notFound := FindById[T](collectionName, objectID)
+
+			if !notFound {
+				insertedItems = append(insertedItems, insertedData)
+			}
+		}
 	}
+
+	return insertedItems
 }
 
-func Find[T any](collectionName string, filters ...filter) []T {
+func FindById[T any](collectionName string, id primitive.ObjectID) (T, bool) {
+	database := dbClient.Database("db")
+	collection := database.Collection(collectionName)
+
+	var item T
+
+	filter := bson.D{{Key: "_id", Value: id}}
+
+	err := collection.FindOne(dbContext, filter).Decode(&item)
+
+	notFound := false
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			notFound = true
+		} else {
+			log.Fatal("Error finding item:", err)
+		}
+	} else {
+		fmt.Printf("Found item: %+v\n", item)
+	}
+
+	return item, notFound
+}
+
+func Find[T any](collectionName string, filters ...*filter) []T {
 	var searchFilters bson.D
 
 	if len(filters) > 0 {
@@ -73,7 +133,7 @@ func Find[T any](collectionName string, filters ...filter) []T {
 				Key: filter.key,
 				Value: bson.D{
 					bson.E{
-						Key:   filter.operation,
+						Key:   filter.operator,
 						Value: filter.value,
 					},
 				},
@@ -114,10 +174,45 @@ func Find[T any](collectionName string, filters ...filter) []T {
 	return results
 }
 
-func GetFilter(key string, value string, operation string) *filter {
-	return &filter{
-		key:       key,
-		value:     value,
-		operation: operation,
+func Update[T any](collectionName string, id primitive.ObjectID, item interface{}) {
+	collection := dbClient.Database("db").Collection(collectionName)
+
+	filter := bson.M{"_id": id}
+
+	updateManyResult, err := collection.UpdateOne(
+		dbContext,
+		filter,
+		item,
+	)
+	if err != nil {
+		log.Fatalf("update error : %v", err)
+		return
 	}
+
+	fmt.Println("========= updated modified count ===========")
+	fmt.Println(updateManyResult.ModifiedCount)
+}
+
+func Delete(collectionName string, id primitive.ObjectID) {
+	collection := dbClient.Database("db").Collection(collectionName)
+
+	filter := bson.D{{Key: "_id", Value: id}}
+	deleteManyResult, err := collection.DeleteOne(dbContext, filter)
+
+	if err != nil {
+		log.Fatalf("delete many data error : %v", err)
+		return
+	}
+	fmt.Println("===== delete many data modified count =====")
+	fmt.Println(deleteManyResult.DeletedCount)
+}
+
+func stringToObjectId(id string) primitive.ObjectID {
+	objectID, err := primitive.ObjectIDFromHex(id)
+
+	if err != nil {
+		log.Fatal("Invalid ObjectID:", err)
+	}
+
+	return objectID
 }
