@@ -49,20 +49,20 @@ func sliceToInterface[T any](slice []*T, fn func(T) interface{}) []interface{} {
 }
 
 func init() {
+	dbClient = mongoDb.DbClient()
+	dbContext = mongoDb.DbContext()
+}
+
+func resetDatabase() {
 	tags := []*Tag{
 		{Name: "Person 1"},
 		{Name: "Person 2"},
 	}
 
-	dbClient = mongoDb.DbClient()
-	dbContext = mongoDb.DbContext()
-
 	dbClient.Database("db").Collection("notes").Drop(dbContext)
 	dbClient.Database("db").Collection("tags").Drop(dbContext)
 
 	insertedTags := InsertTags(tags)
-
-	fmt.Printf("...inserted tag 1...%+v\n", insertedTags[0].Id.Hex())
 
 	firstTag := &insertedTags[0]
 
