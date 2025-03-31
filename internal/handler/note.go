@@ -9,7 +9,22 @@ import (
 )
 
 func GetNotes(context *gin.Context) {
-	context.IndentedJSON(http.StatusOK, model.GetNotes())
+	notes := model.GetNotes()
+
+	var formattedNotes []*model.FormattedNote
+
+	for _, note := range notes {
+		formattedNote, tagNotFound := formatNote(&note)
+
+		if tagNotFound {
+			context.IndentedJSON(http.StatusNotFound, gin.H{"message": "Tag not found"})
+			return
+		}
+
+		formattedNotes = append(formattedNotes, formattedNote)
+	}
+
+	context.IndentedJSON(http.StatusOK, formattedNotes)
 }
 
 func GetNote(context *gin.Context) {
@@ -27,7 +42,14 @@ func GetNote(context *gin.Context) {
 		return
 	}
 
-	context.IndentedJSON(http.StatusOK, note)
+	formattedNote, tagNotFound := formatNote(&note)
+
+	if tagNotFound {
+		context.IndentedJSON(http.StatusNotFound, gin.H{"message": "Tag not found"})
+		return
+	}
+
+	context.IndentedJSON(http.StatusOK, formattedNote)
 }
 
 func AddNote(context *gin.Context) {
@@ -38,7 +60,7 @@ func AddNote(context *gin.Context) {
 		return
 	}
 
-	tag, notFound := model.GetTagById(note.Tag.Id.Hex())
+	tag, notFound := model.GetTagById(note.TagId.Hex())
 
 	if notFound {
 		context.IndentedJSON(http.StatusNotFound, gin.H{"message": "Tag not found"})
@@ -48,7 +70,7 @@ func AddNote(context *gin.Context) {
 	addedNote := []*model.Note{
 		{
 			Title:   note.Title,
-			Tag:     &tag,
+			TagId:   tag.Id,
 			Content: note.Content,
 		},
 	}
@@ -73,7 +95,7 @@ func EditNote(context *gin.Context) {
 		return
 	}
 
-	tag, tagNotFound := model.GetTagById(note.Tag.Id.Hex())
+	tag, tagNotFound := model.GetTagById(note.TagId.Hex())
 
 	if tagNotFound {
 		context.IndentedJSON(http.StatusNotFound, gin.H{"message": "Tag not found"})
@@ -83,13 +105,26 @@ func EditNote(context *gin.Context) {
 	updatedNote := &model.Note{
 		Id:      note.Id,
 		Title:   note.Title,
-		Tag:     &tag,
+		TagId:   tag.Id,
 		Content: note.Content,
 	}
 
 	model.UpdateNote(updatedNote)
 
-	context.IndentedJSON(http.StatusOK, model.GetNotes())
+	var formattedNotes []*model.FormattedNote
+
+	for _, note := range model.GetNotes() {
+		formattedNote, tagNotFound := formatNote(&note)
+
+		if tagNotFound {
+			context.IndentedJSON(http.StatusNotFound, gin.H{"message": "Tag not found"})
+			return
+		}
+
+		formattedNotes = append(formattedNotes, formattedNote)
+	}
+
+	context.IndentedJSON(http.StatusOK, formattedNotes)
 }
 
 func DeleteNote(context *gin.Context) {
@@ -103,4 +138,17 @@ func DeleteNote(context *gin.Context) {
 	model.DeleteNote(id)
 
 	context.IndentedJSON(http.StatusOK, model.GetNotes())
+}
+
+func formatNote(note *model.Note) (*model.FormattedNote, bool) {
+	tag, tagNotFound := model.GetTagById(note.TagId.Hex())
+
+	formattedNote := model.FormattedNote{
+		Id:      note.Id,
+		Title:   note.Title,
+		Content: note.Content,
+		Tag:     &tag,
+	}
+
+	return &formattedNote, tagNotFound
 }

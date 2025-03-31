@@ -49,29 +49,29 @@ func sliceToInterface[T any](slice []*T, fn func(T) interface{}) []interface{} {
 }
 
 func init() {
-	// tags := []*Tag{
-	// 	{Name: "Person 1"},
-	// 	{Name: "Person 2"},
-	// }
+	tags := []*Tag{
+		{Name: "Person 1"},
+		{Name: "Person 2"},
+	}
 
 	dbClient = mongoDb.DbClient()
 	dbContext = mongoDb.DbContext()
 
-	// dbClient.Database("db").Collection("notes").Drop(dbContext)
-	// dbClient.Database("db").Collection("tags").Drop(dbContext)
+	dbClient.Database("db").Collection("notes").Drop(dbContext)
+	dbClient.Database("db").Collection("tags").Drop(dbContext)
 
-	// insertedTags := InsertTags(tags)
+	insertedTags := InsertTags(tags)
 
-	// fmt.Printf("...inserted tag 1...%+v\n", insertedTags[0].Id.Hex())
+	fmt.Printf("...inserted tag 1...%+v\n", insertedTags[0].Id.Hex())
 
-	// firstTag := &insertedTags[0]
+	firstTag := &insertedTags[0]
 
-	// notes := []*Note{
-	// 	{Title: "Note #1", Content: "Content of the note #1", Tag: firstTag},
-	// 	{Title: "Note #2", Content: "Content of the note #2", Tag: firstTag},
-	// }
+	notes := []*Note{
+		{Title: "Note #1", Content: "Content of the note #1", TagId: firstTag.Id},
+		{Title: "Note #2", Content: "Content of the note #2", TagId: firstTag.Id},
+	}
 
-	// InsertNotes(notes)
+	InsertNotes(notes)
 }
 
 func InsertMany[T any](collectionName string, items []interface{}) []T {

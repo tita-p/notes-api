@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"

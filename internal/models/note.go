@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,18 +11,24 @@ type Note struct {
 	Id      primitive.ObjectID `bson:"_id" json:"id,omitempty"`
 	Title   string             `json:"title" bson:"title"`
 	Content string             `json:"content" bson:"content"`
+	TagId   primitive.ObjectID `json:"tagId" bson:"tagId"`
+}
+
+type FormattedNote struct {
+	Id      primitive.ObjectID `bson:"_id" json:"id,omitempty"`
+	Title   string             `json:"title" bson:"title"`
+	Content string             `json:"content" bson:"content"`
 	Tag     *Tag               `json:"tag" bson:"tag"`
 }
 
 var noteCollectionName = "notes"
 
 func InsertNotes(notes []*Note) []Note {
-	fmt.Printf("...inserted tag...%+v\n", notes[0].Tag.Id.Hex())
 	items := sliceToInterface(notes, func(note Note) interface{} {
 		return bson.M{
 			"title":      note.Title,
 			"content":    note.Content,
-			"tag":        note.Tag,
+			"tagId":      note.TagId,
 			"create_at":  time.Now(),
 			"updated_at": time.Now(),
 		}
@@ -41,7 +46,7 @@ func UpdateNote(note *Note) {
 		"$set": bson.M{
 			"title":      note.Title,
 			"content":    note.Content,
-			"tag":        note.Tag,
+			"tagId":      note.TagId,
 			"updated_at": time.Now(),
 		},
 	}
